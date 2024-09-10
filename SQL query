@@ -1,0 +1,87 @@
+1. Area-shopwise franchise sale for the year 2022
+SELECT 
+       SUBSTRING(DELIVERY_CUSTOMER,6,3) AS [Channel Name],
+	   CI.Contract as [Area code],
+	   ci.[IDENTITY] as Shopid,
+	   ci.Name AS [Shop name],
+	   SL.ShopName as Area,
+	   SUBSTRING(ci.CATALOG_NO,1,8) AS Article,
+	   SUBSTRING(ci.CATALOG_NO,9,2) AS Size,
+	   SUBSTRING(H.LOT_BATCH_NO,3,2) AS Batch,
+	   ci.Discount,
+       CAST(ci.invoice_date AS DATE) AS [SaleDT],
+       SUM(ci.invoiced_qty) AS [Total Sale Quantity],
+       SUM(CI.SALE_UNIT_PRICE*INVOICED_QTY*0.8) AS [Total Sale Amount]
+       
+FROM [BI_CUSTOMER_ORDER_INV_JOIN] CI LEFT JOIN POS_ShopList SL ON CI.CONTRACT=SL.ShopId LEFT JOIN BI_INVENTORY_TRANSACTION_HISTORY H ON  CI.ORDER_NO=H.SOURCE_REF1 and ci.CATALOG_NO=H.PART_NO
+WHERE SUBSTRING(DELIVERY_CUSTOMER,6,3) IN ('RSD') AND YEAR(INVOICE_DATE)>=2022  and CLIENT_STATE!='Cancelled' and (DISCOUNT=100) 
+GROUP BY SUBSTRING(DELIVERY_CUSTOMER,6,3),
+       SUBSTRING(ci.CATALOG_NO,1,8),
+       CAST(ci.invoice_date AS DATE)
+	   ,CI.Contract ,
+	   SL.ShopName,
+	   ci.[IDENTITY] ,
+	   ci.Name ,
+	  SUBSTRING(ci.CATALOG_NO,9,2) ,
+	   SUBSTRING(H.LOT_BATCH_NO,3,2) ,
+	   ci.Discount
+	   
+2.Merchandising category wise cost vs sale price
+
+SELECT month(SaleDT) as [Month],
+mc.MERCHEN_CATEGORY AS [Merchandiser Cat],
+SUM(s.NetAmt - s.rAmt) AS [Net Sale Value],
+sum(S.CPU * (Qty-rQty)) as [Cost price]
+FROM Sale s LEFT JOIN PART_WISE_MERCHEN_CATEGORY_TAB pwm ON SUBSTRING(s.Barcode, 1, 10) =  pwm.PART_NO
+LEFT JOIN MERCHAN_CATEGORY_TAB mc ON pwm.MERCHEN_CAT_ID = mc.MER_CAT_ID
+WHERE (
+        SUBSTRING([BarCode], 1, 10) <> '09020A0241'
+        AND SUBSTRING([BarCode], 6, 1) != 'S'
+        )
+	AND s.ShopId NOT in ('S300','S400') and  SaleDT between '2022-01-01' and '2022-06-30' AND mc.MERCHEN_CATEGORY is not null
+GROUP BY month(SaleDT),mc.MERCHEN_CATEGORY
+Order by  month(SaleDT)
+
+3. Merchandising category wise cost vs sale price(where product cost price varies with lot_batch_no)
+with unique_row_cte AS(
+select distinct [Sh_id], PART_NO,LOT_BATCH_NO,UNIT_COST
+from BI_INVENTORY_PART_IN_STOCK_UIV
+)
+select  month(SaleDT) as [month]
+,mc.MERCHEN_CATEGORY AS [Merchandiser Cat]
+, sum(s.NetAmt-s.rAmt) as [Net sale amount] ,
+sum(uiv.UNIT_COST * (Qty-rQty)) as [Cost price]
+from POS_Sale s left JOIN POS_FRANCHIES_PART_WISE_MERCHEN_CATEGORY_TAB pwm ON SUBSTRING(s.Barcode, 1, 10) =  pwm.PART_NO 
+left JOIN POS_FARCH_MERCHAN_CATEGORY_TAB mc ON pwm.MERCHEN_CAT_ID = mc.MER_CAT_ID left join unique_row_cte uiv on substring(s.BarCode,1,10)= uiv.PART_NO and 
+substring(s.BarCode,11,5)= uiv.LOT_BATCH_NO and s.ShopId=uiv.Sh_id
+where  mc.MERCHEN_CATEGORY is not null and  SaleDT between '2022-01-01' and '2022-06-30' AND (LEN([BarCode]) = 15
+AND SUBSTRING([BarCode], 1, 10) <> '09020A0241' AND [BarCode] NOT LIKE '%S%')
+group by month(SaleDT),mc.MERCHEN_CATEGORY
+order by  month(SaleDT)
+
+4. Find all the current and permanent employee
+select  ap.emp_no,pl.employee_name ,ap.assignment_type, ap.valid_from ,ap.ORG_CODE,ap.valid_to
+from COMPANY_PERS_ASSIGN  ap  left join COMPANY_PERSON_ALL  pl on ap.emp_no=pl.emp_no left join EMP_EMPLOYED_TIME_ROW e on e.emp_no=ap.emp_no
+where  ap.assignment_type='Permanent' and DATE_OF_LEAVING= to_date('12/31/9999','mm/dd/yyyy')and ap.valid_to=to_date('12/31/9999','mm/dd/yyyy') 
+       and ap.emp_no like 'GPX%'
+	   
+5. Find all parts that have null in merchandising category/merchandising group
+SELECT 
+ distinct SUBSTRING(S.BarCode,1,8) AS [ARTICLE]
+            ,SUBSTRING(S.BarCode,9,2) AS [SIZE]
+           ,SUBSTRING(S.BarCode,11,5) AS [LOT/BATCH]
+		   ,MG.GROUP_DESC
+            ,MC.MERCHEN_CATEGORY
+          
+ 
+ FROM Sale S
+            LEFT JOIN PART_WISE_MERCHEN_CATEGORY_TAB PWMC ON SUBSTRING(S.BarCode,1,10) = PWMC.PART_NO
+            LEFT JOIN MERCHAN_CATEGORY_TAB MC ON PWMC.MERCHEN_CAT_ID = MC.MER_CAT_ID
+            LEFT JOIN MERCHEN_GROUP MG ON MC.MER_GROUP_ID = MG.GROUP_ID
+			WHERE (
+                SUBSTRING(S.[BarCode], 1, 10) <> '09020A0241'
+                AND SUBSTRING(S.[BarCode], 6, 1) != 'S'
+            ) and ( MG.GROUP_DESC is  null or MC.MERCHEN_CATEGORY is  null)
+			and s.SaleDT between '2021-01-01' and GETDATE()
+			order by SUBSTRING(S.BarCode,1,8) ,SUBSTRING(S.BarCode,9,2) 	   
+	   
