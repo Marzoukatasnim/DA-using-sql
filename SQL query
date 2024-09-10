@@ -89,5 +89,15 @@ FROM Sale S
                 AND SUBSTRING(S.[BarCode], 6, 1) != 'S'
             ) and ( MG.GROUP_DESC is  null or MC.MERCHEN_CATEGORY is  null)
 			and s.SaleDT between '2021-01-01' and GETDATE()
-			order by SUBSTRING(S.BarCode,1,8) ,SUBSTRING(S.BarCode,9,2) 	   
+			order by SUBSTRING(S.BarCode,1,8) ,SUBSTRING(S.BarCode,9,2) 	 
+
+
+6. Count junior and senior player group
+SELECT CASE 
+            WHEN year = 'JR' THEN 'JR'
+            WHEN year = 'SR' THEN 'SR'
+            ELSE 'No Year Data' END AS year_group,
+            COUNT(1) AS count
+  FROM college_football_players
+ GROUP BY 1		
 	   
