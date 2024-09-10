@@ -25,7 +25,9 @@ GROUP BY SUBSTRING(DELIVERY_CUSTOMER,6,3),
 	  SUBSTRING(ci.CATALOG_NO,9,2) ,
 	   SUBSTRING(H.LOT_BATCH_NO,3,2) ,
 	   ci.Discount
-	   
+
+
+
 2.Merchandising category wise cost vs sale price
 
 SELECT month(SaleDT) as [Month],
@@ -41,6 +43,8 @@ WHERE (
 	AND s.ShopId NOT in ('S300','S400') and  SaleDT between '2022-01-01' and '2022-06-30' AND mc.MERCHEN_CATEGORY is not null
 GROUP BY month(SaleDT),mc.MERCHEN_CATEGORY
 Order by  month(SaleDT)
+
+
 
 3. Merchandising category wise cost vs sale price(where product cost price varies with lot_batch_no)
 with unique_row_cte AS(
@@ -59,12 +63,16 @@ AND SUBSTRING([BarCode], 1, 10) <> '09020A0241' AND [BarCode] NOT LIKE '%S%')
 group by month(SaleDT),mc.MERCHEN_CATEGORY
 order by  month(SaleDT)
 
+
+
 4. Find all the current and permanent employee
 select  ap.emp_no,pl.employee_name ,ap.assignment_type, ap.valid_from ,ap.ORG_CODE,ap.valid_to
 from COMPANY_PERS_ASSIGN  ap  left join COMPANY_PERSON_ALL  pl on ap.emp_no=pl.emp_no left join EMP_EMPLOYED_TIME_ROW e on e.emp_no=ap.emp_no
 where  ap.assignment_type='Permanent' and DATE_OF_LEAVING= to_date('12/31/9999','mm/dd/yyyy')and ap.valid_to=to_date('12/31/9999','mm/dd/yyyy') 
        and ap.emp_no like 'GPX%'
-	   
+
+
+
 5. Find all parts that have null in merchandising category/merchandising group
 SELECT 
  distinct SUBSTRING(S.BarCode,1,8) AS [ARTICLE]
@@ -72,9 +80,7 @@ SELECT
            ,SUBSTRING(S.BarCode,11,5) AS [LOT/BATCH]
 		   ,MG.GROUP_DESC
             ,MC.MERCHEN_CATEGORY
-          
- 
- FROM Sale S
+FROM Sale S
             LEFT JOIN PART_WISE_MERCHEN_CATEGORY_TAB PWMC ON SUBSTRING(S.BarCode,1,10) = PWMC.PART_NO
             LEFT JOIN MERCHAN_CATEGORY_TAB MC ON PWMC.MERCHEN_CAT_ID = MC.MER_CAT_ID
             LEFT JOIN MERCHEN_GROUP MG ON MC.MER_GROUP_ID = MG.GROUP_ID
